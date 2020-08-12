@@ -142,8 +142,8 @@ void LabelMaker::convertAxsisGraphics2CurrentImage(int mx, int my, int *out_mx, 
 	my -= offset;
     int w = scene_img_w;
     int h = scene_img_h;
-    *out_mx = (int)((double)mx / w * currentimg.cols);
-    *out_my = (int)((double)my / h * currentimg.rows);
+    *out_mx = (int)((double)mx / w * currentimg.width());
+    *out_my = (int)((double)my / h * currentimg.height());
 }
 void LabelMaker::searchBboxByMI(int mx, int my, int *out_x1, int *out_y1, int *out_x2, int *out_y2)
 {
@@ -155,7 +155,7 @@ void LabelMaker::searchBboxByMI(int mx, int my, int *out_x1, int *out_y1, int *o
     int max_r = 0;
     double max_mi = 0;
     QPoint maxp;
-	QImage img = QImage(currentimg.data, currentimg.cols,currentimg.rows, QImage::Format_RGB888);
+	QImage img = currentimg.convertToFormat(QImage::Format_RGB888);
 	int r_min = 30 * ((double)my / img.height());
 	int r_max = 90 * ((double)my / img.height());
 	r_min = (r_min > 10)?r_min:10;
@@ -171,10 +171,10 @@ void LabelMaker::searchBboxByMI(int mx, int my, int *out_x1, int *out_y1, int *o
 		int step = 2;
         for(int x=mx-size; x < mx+size; x+=step)
 		{
-			if(((currentimg.cols - mw) <= x) || (x <= r)) continue;
+			if(((currentimg.width() - mw) <= x) || (x <= r)) continue;
 			for(int y=my-size; y < my+size; y+=step)
 			{
-				if(((currentimg.rows - mh) <= y) || (y <= r) )continue;
+				if(((currentimg.height() - mh) <= y) || (y <= r) )continue;
 				//qDebug() << "r:" << r << QString("(x,y) = (%1,%2)").arg(x).arg(y);
 				double mi = calc_mi(img, ballmask, x-r, y-r);
 				//std::cout << mi << std::endl;
@@ -192,10 +192,10 @@ void LabelMaker::searchBboxByMI(int mx, int my, int *out_x1, int *out_y1, int *o
 		}
     }
     int offset = viewoffset;
-    *out_x1 = (int)((double)(max_x - max_r)/currentimg.cols * scene_img_w)+offset;
-    *out_y1 = (int)((double)(max_y - max_r)/currentimg.rows * scene_img_h)+offset;
-    *out_x2 = (int)((double)(max_x + max_r)/currentimg.cols * scene_img_w)+offset;
-    *out_y2 = (int)((double)(max_y + max_r)/currentimg.rows * scene_img_h)+offset;
+    *out_x1 = (int)((double)(max_x - max_r)/currentimg.width() * scene_img_w)+offset;
+    *out_y1 = (int)((double)(max_y - max_r)/currentimg.height() * scene_img_h)+offset;
+    *out_x2 = (int)((double)(max_x + max_r)/currentimg.width() * scene_img_w)+offset;
+    *out_y2 = (int)((double)(max_y + max_r)/currentimg.height() * scene_img_h)+offset;
 }
 double LabelMaker::calc_mi( const QImage &img, const QImage &maskimg, int x0, int y0 )
 {
@@ -392,7 +392,7 @@ int LabelMaker::updateView()
     {
         return -1;
     }
-    if(currentimg.empty())
+    if(currentimg.isNull())
     {
         qDebug() << "img empty.";
         return -1;
@@ -416,18 +416,16 @@ int LabelMaker::updateView()
     return 0;
 }
 
-int LabelMaker::setImage(cv::Mat img)
+int LabelMaker::setImage(const QImage &img)
 {
     int offset = viewoffset;
     scene_img_w = ui->graphicsView->width()-offset*2;
     scene_img_h = ui->graphicsView->height()-offset*2;
-    QPixmap pix;
     if(scene_img_w<=0 || scene_img_h<=0)
     {
         return -1;
     }
-    cv::resize(img,img,cv::Size(scene_img_w,scene_img_h));
-    pix = myq.MatBGR2pixmap(img);
+    QPixmap pix = QPixmap::fromImage(img.scaled(scene_img_w, scene_img_h));
     QGraphicsPixmapItem *p = scene.addPixmap(pix);
     p->setPos(offset,offset);
     return 0;
@@ -477,7 +475,7 @@ int LabelMaker::drawBbox()
 
 void LabelMaker::loadImage()
 {
-    currentimg = cv::imread(img_list[img_index].filePath().toStdString());
+    currentimg = QImage(img_list[img_index].filePath());
 }
 
 void LabelMaker::correctCoordiante(int &x, int &y)
@@ -652,6 +650,7 @@ bool LabelMaker::eventFilter(QObject *obj, QEvent *eve)
 		}
 		return true;
 	}
+	return false;
 }
 
 bool LabelMaker::isPixelInBbox(int x,int y,Bbox *box)

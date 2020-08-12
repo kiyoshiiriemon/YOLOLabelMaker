@@ -69,11 +69,11 @@ private:
     QFileInfoList img_list;
     MyQclass myq;
     QGraphicsScene scene;
-    cv::Mat currentimg;
+    QImage currentimg;
     QSettings key;
     void connectSignals();
     int updateView();
-    int setImage(cv::Mat src);
+    int setImage(const QImage &img);
     int drawCursur();
     int drawRect();
     int drawBbox();
